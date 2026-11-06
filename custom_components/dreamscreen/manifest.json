@@ -5,5 +5,5 @@
     "dependencies": [],
     "codeowners": ["https://github.com/GregoryDosh"],
     "requirements": ["PyDreamScreen>=0.0.14"],
-    "version": "2020.8.5"
+    "version": "2020.8.6"
   }

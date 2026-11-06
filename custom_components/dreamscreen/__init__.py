@@ -8,6 +8,8 @@ from homeassistant.const import ATTR_ENTITY_ID, CONF_MODE, CONF_BRIGHTNESS
 from homeassistant.helpers.entity import Entity, generate_entity_id
 from homeassistant.helpers.entity_component import EntityComponent
 
+from .state import read_state
+
 _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "dreamscreen"
@@ -301,5 +303,5 @@ class DreamScreenEntity(Entity):
         return attrs
 
     def update(self):
-        """When updating entity, call update on the device."""
-        self.device.update_current_state(self.timeout)
+        """When updating entity, read the device state under the shared lock."""
+        read_state(self.device, self.timeout)
