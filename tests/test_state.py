@@ -53,3 +53,66 @@ def test_read_state_serializes_concurrent_reads(state):
         thread.join()
 
     assert events == ["start", "end", "start", "end"]
+
+
+class SequenceDevice:
+    """Return a fixed sequence of results."""
+
+    def __init__(self, results):
+        self.results = list(results)
+        self.calls = 0
+
+    def update_current_state(self, timeout):
+        result = self.results[min(self.calls, len(self.results) - 1)]
+        self.calls += 1
+        return result
+
+
+def test_read_state_retries_once_after_failure(state, monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(state.time, "sleep", sleeps.append)
+    device = SequenceDevice([False, True])
+
+    result = state.read_state(device, 1)
+
+    assert result is True
+    assert device.calls == 2
+    assert sleeps == [0.5]
+
+
+def test_read_state_returns_false_when_both_attempts_fail(state, monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(state.time, "sleep", sleeps.append)
+    device = SequenceDevice([False, False])
+
+    result = state.read_state(device, 1)
+
+    assert result is False
+    assert device.calls == 2
+    assert sleeps == [0.5]
+
+
+def test_read_state_does_not_retry_after_success(state, monkeypatch):
+    sleeps = []
+    monkeypatch.setattr(state.time, "sleep", sleeps.append)
+    device = SequenceDevice([True])
+
+    result = state.read_state(device, 1)
+
+    assert result is True
+    assert device.calls == 1
+    assert sleeps == []
+
+
+def test_read_state_holds_lock_during_retry(state, monkeypatch):
+    held = []
+
+    def record(seconds):
+        held.append(state._READ_LOCK.locked())
+
+    monkeypatch.setattr(state.time, "sleep", record)
+    device = SequenceDevice([False, True])
+
+    state.read_state(device, 1)
+
+    assert held == [True]
